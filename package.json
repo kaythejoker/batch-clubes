@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node src/index.js",
-    "test": "node --test test/",
+    "test": "node --test",
     "gerar-fixture": "node scripts/gerar-fixture.js"
   }
 }
