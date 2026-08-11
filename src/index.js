@@ -79,12 +79,17 @@ async function main() {
   let rejeitosDetalhados = 0;
   let rejeitosOmitidos = 0;
 
-  function registraRejeito(numeroLinha, motivo) {
-    const total = contadores.invalidasPorMotivo.get(motivo) ?? 0;
-    contadores.invalidasPorMotivo.set(motivo, total + 1);
+  // A categoria é chave de contagem e precisa ser um conjunto FECHADO de
+  // strings: mensagem de erro com posição embutida viraria uma entrada nova
+  // no Map por linha ruim — sumário ilegível e memória crescendo com o
+  // arquivo. O detalhe variável só aparece nas 20 primeiras (D3).
+  function registraRejeito(numeroLinha, categoria, detalhe = '') {
+    const total = contadores.invalidasPorMotivo.get(categoria) ?? 0;
+    contadores.invalidasPorMotivo.set(categoria, total + 1);
     if (rejeitosDetalhados < TETO_DETALHES) {
       rejeitosDetalhados += 1;
-      console.error(`rejeito na linha ${numeroLinha}: ${motivo}`);
+      const sufixo = detalhe === '' ? '' : ` (${detalhe})`;
+      console.error(`rejeito na linha ${numeroLinha}: ${categoria}${sufixo}`);
     } else {
       rejeitosOmitidos += 1;
     }
@@ -118,7 +123,7 @@ async function main() {
         // Só SyntaxError é dado sujo. Qualquer outra coisa é bug nosso
         // e tem que estourar com stack, não virar "registro ruim".
         if (!(erro instanceof SyntaxError)) throw erro;
-        registraRejeito(contadores.linhasLidas, `json inválido: ${erro.message}`);
+        registraRejeito(contadores.linhasLidas, 'json inválido', erro.message);
         continue;
       }
 
