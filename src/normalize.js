@@ -46,8 +46,9 @@ export function joinColors(v) {
     .join('|');
 }
 
-// Combinantes U+0300–U+036F, que o normalize('NFD') separa das letras base.
-const DIACRITICOS = /[̀-ͯ]/g;
+// Depois do NFD os acentos viram marcas separadas; \p{Diacritic} as remove
+// declarando a intenção, em vez de um intervalo unicode ilegível no source.
+const DIACRITICOS = /\p{Diacritic}/gu;
 
 // Só para o predicado do filtro: a saída escreve o valor original (D1, D12).
 export function normalizeChampionship(v) {
