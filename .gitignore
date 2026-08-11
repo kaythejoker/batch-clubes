@@ -1,3 +1,7 @@
+# Fixtures sintéticas geradas por scripts/gerar-fixture.js — por nome, não por
+# diretório: qualquer dado real em data/ continua versionado por padrão.
+fixture*.jsonl
+
 # Logs
 logs
 *.log
