@@ -1,4 +1,4 @@
-# desafio-batch-clubes
+# batch-clubes
 
 Conversor batch de JSONL de clubes de futebol para CSV, em Node puro.
 
@@ -32,8 +32,13 @@ node src/index.js <entrada.jsonl> [--out-dir <dir>]
 O caminho do JSONL é parâmetro posicional obrigatório; `--out-dir` define onde
 escrever os dois CSVs (default: diretório atual, criado se não existir). O
 sumário de processamento sai em stderr, para não contaminar redirecionamentos
-de stdout. Exit code 1 se a entrada não existe ou se nenhum clube válido foi
-encontrado — quase sempre sinal de arquivo errado, não de base vazia.
+de stdout.
+
+Exit code 1, sempre com mensagem clara em stderr, quando: a entrada não existe
+ou não é um arquivo regular (diretório, por exemplo); nenhum clube válido foi
+encontrado — quase sempre sinal de arquivo errado, não de base vazia; ou a
+escrita da saída falhou (disco cheio, permissão) — nesse caso o sumário parcial
+ainda é impresso antes da mensagem de erro.
 
 Exemplo real, contra a amostra versionada:
 
@@ -115,6 +120,14 @@ O registro completo, com as medições que sustentam cada uma, está em
   embute o offset do erro; usada como chave de contagem, criaria uma entrada
   nova por linha ruim e o contador vazaria memória proporcional ao número de
   erros (ver D15 em docs/decisoes.md).
+- **Falha de escrita degrada com sumário, não com stack**: os streams de saída
+  têm listener permanente de `error` — sem ele, uma falha de disco emitida
+  fora das janelas de espera (`drain`/`finished`) viraria uncaught exception e
+  mataria o processo sem sumário. Com ele, o processamento para cedo, o
+  sumário parcial sai, e o processo termina com mensagem clara e exit 1.
+- **Entrada validada como arquivo regular** (`statSync` + `isFile`), não só
+  como existente: diretório passado por engano falha com a mesma mensagem
+  clara citando o caminho, em vez de EISDIR cru do stream de leitura.
 
 ## Robustez
 
@@ -142,19 +155,24 @@ gravaria uma data que não existia na fonte.
 npm test
 ```
 
-77 testes em 4 arquivos, usando o runner nativo (`node --test`), sem framework:
+80 testes em 4 arquivos, usando o runner nativo (`node --test`), sem framework:
 
-- `test/csv.test.js` — escape RFC 4180 (vírgula, aspas, quebras de linha,
-  tipos não-tabulares) e `CsvWriter`, incluindo o branch de saturação com um
-  sink de `highWaterMark: 1` que força `write()` a devolver `false`, e a
-  rejeição de `waitForDrain` quando o sink falha com o buffer cheio.
-- `test/normalize.test.js` — datas (bissexto completo: `2000-02-29` válido,
-  `1900-02-29` inválido), cores, campeonato (quatro grafias no mesmo bucket).
-- `test/transform.test.js` — granularidade do descarte e schema único, com os
-  cabeçalhos conferidos literalmente e linhas validadas índice a índice.
-- `test/index.test.js` — integração: roda o processo real contra JSONL
+- `test/csv.test.js` (22) — escape RFC 4180 (vírgula, aspas, quebras de linha,
+  tipos não-tabulares) e `CsvWriter`: o branch de saturação com um sink de
+  `highWaterMark: 1` que força `write()` a devolver `false`, a rejeição de
+  `waitForDrain` quando o sink falha com o buffer cheio, e o sink destruído
+  **fora** de janela de espera — o erro fica registrado sem virar uncaught
+  exception e sem engolir o rethrow do `close()`.
+- `test/normalize.test.js` (30) — datas (bissexto completo: `2000-02-29`
+  válido, `1900-02-29` inválido), cores, campeonato (quatro grafias no mesmo
+  bucket).
+- `test/transform.test.js` (19) — granularidade do descarte e schema único,
+  com os cabeçalhos conferidos literalmente e linhas validadas índice a
+  índice.
+- `test/index.test.js` (9) — integração: roda o processo real contra JSONL
   temporário e valida o texto bruto dos CSVs, incluindo JSON quebrado no meio,
-  BOM, linha em branco final e códigos de saída.
+  BOM, linha em branco final, diretório passado como entrada e códigos de
+  saída.
 
 ## Desempenho
 
