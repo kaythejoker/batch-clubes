@@ -99,6 +99,9 @@ jogador órfão em `players.csv` é pior que jogador ausente.
 O jogador ruim não derruba o clube porque perder 30 jogadores bons por causa de 1
 malformado é o pior dos dois erros.
 
+Por simetria com a regra do `club_id`, `player_id` não-string também descarta o
+jogador — sem conversão de número para string.
+
 ### D3 — Relatório de rejeitos com teto
 
 Contadores por categoria, impressos no fim em **stderr** (para não contaminar o
