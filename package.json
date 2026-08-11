@@ -1,0 +1,15 @@
+{
+  "name": "desafio-batch-clubes",
+  "version": "0.1.0",
+  "description": "Processamento batch de dados de clubes em Node puro",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test test/",
+    "gerar-fixture": "node scripts/gerar-fixture.js"
+  }
+}
