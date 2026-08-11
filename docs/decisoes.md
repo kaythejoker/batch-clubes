@@ -184,6 +184,29 @@ primeiro registro.
 Linha vazia ou só com espaços é pulada **sem** contar como rejeito. Contá-la faria
 todo arquivo terminado em `\n\n` reportar erro que não existe.
 
+### D15 — Categorias de rejeito são um conjunto fechado
+
+O contador de rejeitos por motivo usa um `Map`, e a chave desse `Map` precisa
+vir de um conjunto **fechado** de strings — nunca de mensagem de erro.
+
+O mecanismo do vazamento que motivou a regra: a mensagem do `JSON.parse` embute
+o offset do caractere onde o parse falhou — `Unterminated string in JSON at
+position 3587 (line 1 column 3588)`. Usada como chave, cada linha ruim gera uma
+string diferente e portanto uma entrada nova no `Map`. O contador de erros
+passa a crescer proporcionalmente ao número de erros — **um vazamento de
+memória dentro do conversor cuja tese é memória constante**, que nenhum teste
+de arquivo pequeno acusa, e que ainda torna o sumário ilegível (uma "categoria"
+por linha).
+
+A regra: a contagem agrupa por categoria fixa (`json inválido`, `club_id
+ausente, não-string ou vazio`, `registro não é um objeto`); a mensagem completa,
+com offset, aparece apenas nos 20 primeiros rejeitos detalhados (D3), onde o
+detalhe variável é informação e não chave.
+
+Detectado num smoke test de 2 mil linhas com 5% de sujeira, antes da medição de
+5 milhões — o sumário saiu com uma entrada por erro de parse e denunciou a chave
+aberta.
+
 ## Verificação
 
 A amostra em `data/sample_clubes.jsonl` tem 6 clubes: 3 SERIE A, 2 SERIE B, 1 SEM
