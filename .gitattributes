@@ -1,0 +1,6 @@
+# Artefatos de dados saem do checkout byte a byte, sem conversão de EOL:
+# a saída do conversor é LF por contrato (D4) e o revisor confere os CSVs
+# de referência com git diff — CRLF injetado no checkout quebraria a
+# comparação em toda linha.
+*.csv -text
+*.jsonl -text
