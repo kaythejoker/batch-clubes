@@ -1,4 +1,4 @@
-// Escrita de CSV com escape RFC 4180 (docs/decisoes.md, D4, D6, D7, D8, D9).
+// Escrita de CSV com escape RFC 4180 (docs/decisoes.md, D4, D7, D8, D9).
 // Sem dependência externa: o escaping são poucas linhas e o controle vale mais.
 
 import { once } from 'node:events';
