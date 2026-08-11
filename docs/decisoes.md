@@ -192,8 +192,58 @@ O caminho do `drain` precisa de teste dedicado: um `Writable` com
 exercita o branch. Sem isso, justamente o trecho que motivou toda a análise de
 backpressure fica sem cobertura.
 
-## Em aberto
+### D12 — Contrato de colunas
 
-- **Nomes dos cabeçalhos em português** e quais colunas entram em cada CSV.
-- **Representação de `colors`**, que é array no JSON e precisa virar campo escalar.
-  Se o separador escolhido for vírgula, D7 obriga o campo a sair entre aspas.
+Seleção explícita: o JSON traz campos que **não entram em lugar nenhum**
+(`titles`, `nationality`, `market_value`). Selecionar as colunas pedidas faz parte
+do contrato, não é omissão.
+
+`clubs.csv`, nesta ordem exata:
+
+| Cabeçalho | Chave no JSON |
+| --- | --- |
+| Id do Clube | `club_id` |
+| Nome | `name` |
+| Campeonato | `championship` |
+| Data de Fundação | `founding_date` |
+| Cidade | `city` |
+| Estado | `state` |
+| País | `country` |
+| Estádio | `stadium` |
+| Presidente | `president` |
+| Apelido | `nickname` |
+| Cores | `colors` |
+
+`players.csv`, nesta ordem exata:
+
+| Cabeçalho | Origem |
+| --- | --- |
+| Id do Clube | `club_id` do clube pai |
+| Id do Jogador | `player_id` |
+| Nome | `name` |
+| Idade | `age` |
+| Gols | `goals` |
+| Data de Estreia | `debut_date` |
+| Posição | `position` |
+| Número da Camisa | `shirt_number` |
+
+A coluna Campeonato escreve o valor **original** do JSON; a forma normalizada de D1
+existe só para a comparação do filtro.
+
+### D13 — `colors`: array unido por pipe
+
+Array unido por `|`, sem espaço: `["preto","branco"]` vira `preto|branco`.
+
+- Array vazio, ausente ou que não é array → campo vazio.
+- Elemento que não é string é **descartado do join** — nunca vira
+  `[object Object]`.
+
+O pipe evita colisão com o separador do CSV; nenhuma cor da base usa `|`.
+
+### D14 — Datas em `yyyy-MM-dd`
+
+Toda data de saída — `founding_date` e `debut_date` — sai em `yyyy-MM-dd`.
+
+Origem inválida vira **campo vazio e a linha continua** no arquivo: data ruim não
+descarta registro. É o mesmo princípio de D5 (normalização total) aplicado a datas
+— o campo degrada, o registro sobrevive.
