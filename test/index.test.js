@@ -170,6 +170,22 @@ describe('integração do cli', () => {
     assert.doesNotMatch(falha.stderr, /ENOENT/); // erro tratado, não stack cru
   });
 
+  test('diretório passado como entrada: erro claro citando o caminho, exit 1', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'desafio-dir-'));
+    let falha = null;
+    try {
+      await rodaProcesso(process.execPath, [INDEX, dir]);
+    } catch (erro) {
+      falha = erro;
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+    assert.equal(falha?.code, 1);
+    assert.match(falha.stderr, /não é um arquivo/);
+    assert.ok(falha.stderr.includes(dir), 'stderr cita o caminho recebido');
+    assert.doesNotMatch(falha.stderr, /EISDIR/); // erro tratado, não stack cru
+  });
+
   test('zero clubes válidos: exit 1', async () => {
     const { stderr, code } = await roda(`${CLUBE_FILTRADO}\n`);
     assert.equal(code, 1);

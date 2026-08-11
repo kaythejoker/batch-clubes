@@ -2,7 +2,7 @@
 // Só este arquivo decide quando escrever e quando esperar; o que vira linha
 // é decisão do transform.
 
-import { createReadStream, createWriteStream, existsSync, mkdirSync } from 'node:fs';
+import { createReadStream, createWriteStream, mkdirSync, statSync } from 'node:fs';
 import readline from 'node:readline';
 import { parseArgs } from 'node:util';
 import path from 'node:path';
@@ -53,8 +53,21 @@ function parseCli(argv) {
 async function main() {
   const { entrada, outDir } = parseCli(process.argv.slice(2));
 
-  if (!existsSync(entrada)) {
+  // statSync em vez de existsSync: diretório passado como entrada falharia
+  // só no createReadStream, com EISDIR cru e stack — mesma clareza de
+  // mensagem para os dois casos, citando o caminho recebido.
+  let stats = null;
+  try {
+    stats = statSync(entrada);
+  } catch {
+    // inexistente ou inacessível: tratado logo abaixo, junto com não-arquivo
+  }
+  if (stats === null) {
     console.error(`erro: arquivo de entrada não encontrado: ${entrada}`);
+    process.exit(1);
+  }
+  if (!stats.isFile()) {
+    console.error(`erro: a entrada não é um arquivo: ${entrada}`);
     process.exit(1);
   }
   mkdirSync(outDir, { recursive: true });
