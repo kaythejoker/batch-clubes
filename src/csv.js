@@ -33,11 +33,24 @@ export function formatRow(campos) {
 export class CsvWriter {
   #stream;
   #eol;
+  #erro = null;
 
   constructor(stream, cabecalhos, { eol = EOL } = {}) {
     this.#stream = stream;
     this.#eol = eol;
+    // Listener permanente: sem ele, um erro do sink emitido FORA das janelas
+    // de once(drain)/finished() — ex.: ENOSPC com o buffer abaixo do high
+    // water mark — vira uncaught exception e mata o processo sem sumário.
+    // Só registra; close() continua propagando via finished(), sem duplicar.
+    this.#stream.on('error', (erro) => {
+      this.#erro ??= erro;
+    });
     this.#stream.write(formatRow(cabecalhos) + this.#eol);
+  }
+
+  // Primeiro erro emitido pelo sink, ou null; o orquestrador consulta.
+  get erro() {
+    return this.#erro;
   }
 
   // Devolve o boolean do write() subjacente: false = buffer cheio.

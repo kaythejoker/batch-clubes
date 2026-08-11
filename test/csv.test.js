@@ -157,6 +157,35 @@ describe('CsvWriter', () => {
     assert.equal(writer.precisaDrenar, false);
   });
 
+  test('erro do sink fora de janela de espera não vira uncaught e fica registrado', async () => {
+    const sink = new Writable({
+      write(chunk, encoding, callback) {
+        callback();
+      },
+    });
+    const writer = new CsvWriter(sink, ['a']);
+    writer.writeRow(['1']);
+
+    // Sink morre entre writes, sem once(drain) nem finished() pendentes:
+    // sem o listener permanente, este 'error' derrubaria o processo.
+    const falha = new Error('disco falhou fora da espera');
+    sink.destroy(falha);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(writer.erro, falha);
+    // O registro não engole o rethrow: close() ainda propaga via finished().
+    await assert.rejects(writer.close(), /disco falhou fora da espera/);
+  });
+
+  test('erro é null enquanto o sink está saudável', async () => {
+    const { sink } = sinkColetor();
+    const writer = new CsvWriter(sink, ['a']);
+    writer.writeRow(['1']);
+    assert.equal(writer.erro, null);
+    await writer.close();
+    assert.equal(writer.erro, null);
+  });
+
   test('waitForDrain rejeita se o sink falhar durante a espera', async () => {
     const callbacks = [];
     const sink = new Writable({

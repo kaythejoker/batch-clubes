@@ -147,8 +147,18 @@ async function main() {
 
       // Backpressure da escrita: espera sequencial só de quem saturou.
       // Sinks independentes — um não bloqueia o outro (D9).
-      if (escritorClubes.precisaDrenar) await escritorClubes.waitForDrain();
-      if (escritorJogadores.precisaDrenar) await escritorJogadores.waitForDrain();
+      try {
+        if (escritorClubes.precisaDrenar) await escritorClubes.waitForDrain();
+        if (escritorJogadores.precisaDrenar) await escritorJogadores.waitForDrain();
+      } catch {
+        // waitForDrain só rejeita com erro do próprio sink, que o listener
+        // permanente já registrou; o tratamento unificado fica após o loop.
+        break;
+      }
+
+      // Erro do sink fora da janela de espera: parar cedo, fechar e reportar
+      // com sumário — não adianta seguir lendo para um destino morto.
+      if (escritorClubes.erro !== null || escritorJogadores.erro !== null) break;
     }
   } finally {
     // Os streams fecham mesmo se o loop lançar. end() não é flush:
@@ -161,7 +171,10 @@ async function main() {
       }
     }
   }
-  if (erroDeFlush !== null) throw erroDeFlush;
+  // Falha de escrita — no meio do processamento ou no flush final — não pode
+  // morrer com stack cru: o sumário ainda sai, seguido de mensagem clara e
+  // exit não-zero. O ??= do listener e o ?? daqui garantem UM erro, não dois.
+  const erroDeEscrita = erroDeFlush ?? escritorClubes.erro ?? escritorJogadores.erro;
 
   // Sumário em stderr para não contaminar o pipe do stdout (D3).
   const linhasInvalidas = [...contadores.invalidasPorMotivo.values()]
@@ -178,6 +191,12 @@ async function main() {
   }
   if (rejeitosOmitidos > 0) {
     console.error(`(${rejeitosOmitidos} rejeitos omitidos do detalhe; teto de ${TETO_DETALHES})`);
+  }
+
+  if (erroDeEscrita !== null) {
+    console.error(`erro: falha de escrita na saída: ${erroDeEscrita.message}`);
+    process.exitCode = 1;
+    return;
   }
 
   // Zero clubes válidos quase sempre é arquivo errado, não base vazia.
